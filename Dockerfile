@@ -6,7 +6,7 @@ RUN mvn -f /usr/src/ezaga-service/pom.xml clean package -Dmaven.test.skip=true
 
 FROM openjdk:17
 
-COPY --from=build /usr/src/user-service/target/ezaga-stu-man-backend-0.0.1-SNAPSHOT.jar /usr/src/ezaga-service/app.jar
+COPY --from=build /usr/src/ezaga-service/target/ezaga-stu-man-backend-0.0.1-SNAPSHOT.jar /usr/src/ezaga-service/app.jar
 WORKDIR /usr/src/ezaga-service
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
