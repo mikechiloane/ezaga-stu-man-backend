@@ -1,5 +1,6 @@
 package co.za.faboda.ezagastumanbackend.service;
 
+import co.za.faboda.ezagastumanbackend.exceptions.AlreadyExistsException;
 import co.za.faboda.ezagastumanbackend.exceptions.NotFoundException;
 import co.za.faboda.ezagastumanbackend.exceptions.ValidationException;
 import co.za.faboda.ezagastumanbackend.model.Student;
@@ -22,18 +23,20 @@ public class StudentService {
     private final JWTUtil jwtUtil;
 
     public AuthTokenResponse registerStudent(RegistrationRequest registrationRequest) {
-        try {
+
+        Student studentExists = studentRepository.findByEmail(registrationRequest.getEmail()).orElse(null);
+        if (studentExists == null) {
+
             Student student = new Student();
             student.setEmail(registrationRequest.getEmail());
             student.setFullName(registrationRequest.getFullName());
             student.setPassword(passwordEncoder.encode(registrationRequest.getPassword()));
             student.setStudentNumber(StudentNumberGenerator.generateStudentNumber());
             studentRepository.save(student);
-            return  AuthTokenResponse.builder().token(jwtUtil.createToken(student)).build();
-        } catch (Exception e) {
-            log.error("Error during registration", e);
-            throw e;
+            return AuthTokenResponse.builder().token(jwtUtil.createToken(student)).build();
         }
+        throw new AlreadyExistsException("Student already exists");
+
     }
 
     public Student getStudentByEmail(String email) {
@@ -44,7 +47,7 @@ public class StudentService {
         Student student = studentRepository.findByEmail(loginRequest.getEmail()).orElse(null);
 
         if (student != null && passwordEncoder.matches(loginRequest.getPassword(), student.getPassword())) {
-            log.info("User {} authenticated successfully",student.getFullName());
+            log.info("User {} authenticated successfully", student.getFullName());
             return AuthTokenResponse.builder().token(jwtUtil.createToken(student)).build();
         }
 
@@ -54,8 +57,7 @@ public class StudentService {
     public StudentDetails getStudentDetails(String email) {
         Student student = studentRepository.findByEmail(email).orElse(null);
         if (student != null) {
-            return StudentDetails.builder().fullName(student.getFullName()).studentNumber(student.getStudentNumber())
-                    .needsPasswordReset(student.isNeedsPasswordReset()).secondFactorAuthEnabled(student.isSecondFactorAuthEnabled()).email(student.getEmail()).build();
+            return StudentDetails.builder().fullName(student.getFullName()).studentNumber(student.getStudentNumber()).needsPasswordReset(student.isNeedsPasswordReset()).secondFactorAuthEnabled(student.isSecondFactorAuthEnabled()).email(student.getEmail()).build();
         }
         log.error("Student not found for email: {}", email);
         throw new NotFoundException("Student not found");
@@ -71,7 +73,7 @@ public class StudentService {
         throw new NotFoundException("Student not found");
     }
 
-    public Success getOtp(String email){
+    public Success getOtp(String email) {
         Student student = studentRepository.findByEmail(email).orElse(null);
         if (student != null) {
             return Success.builder().message("OTP sent successfully").build();
@@ -80,7 +82,7 @@ public class StudentService {
         throw new NotFoundException("Student not found");
     }
 
-    public AuthTokenResponse validateOtp(ValidateOtpRequest validateOtpRequest){
+    public AuthTokenResponse validateOtp(ValidateOtpRequest validateOtpRequest) {
         Student student = studentRepository.findByEmail(validateOtpRequest.getEmail()).orElse(null);
         if (student != null && validateOtpRequest.getOtp().equals("1234")) {
             return AuthTokenResponse.builder().token(jwtUtil.createToken(student)).build();
@@ -88,7 +90,7 @@ public class StudentService {
         throw new ValidationException("Invalid OTP");
     }
 
-    public Success resetPassword(ResetPasswordRequest resetPasswordRequest){
+    public Success resetPassword(ResetPasswordRequest resetPasswordRequest) {
         String email = jwtUtil.extractUserEmailFromToken(resetPasswordRequest.getToken());
         Student student = studentRepository.findByEmail(email).orElse(null);
         if (student != null) {
@@ -99,7 +101,6 @@ public class StudentService {
         }
         throw new NotFoundException("Student not found");
     }
-
 
 
 }
